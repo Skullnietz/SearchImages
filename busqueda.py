@@ -1,57 +1,39 @@
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 import time
 
-def buscar_y_descargar_imagenes(query, cantidad=10):
-    # Configura el controlador del navegador (asegúrate de tener el controlador en el PATH del sistema)
-    driver = webdriver.Chrome()
+# Lista de términos de búsqueda
+search_terms = ["Carro mustang", "Playstation", "PCgamer"]
 
+# Configurar el navegador Chrome (descarga el controlador de Chrome: https://sites.google.com/chromium.org/driver/)
+chrome_options = Options()
+chrome_options.add_argument('--headless')  # Ejecutar en modo sin cabeza (sin interfaz gráfica)
+driver = webdriver.Chrome(options=chrome_options)
+
+for term in search_terms:
+    # Construir la URL de búsqueda en Google Images
+    search_url = f'https://www.google.com/search?q={term}&tbm=isch'
+
+    # Abrir la URL en el navegador
+    driver.get(search_url)
+    time.sleep(2)  # Esperar un tiempo para cargar la página (puede ser ajustado según la velocidad de tu conexión)
+
+    # Encontrar el primer elemento de imagen y hacer clic en él
     try:
-        # Abre el navegador y carga Google Images
-        driver.get("https://www.google.com/imghp")
+        first_image = driver.find_element_by_css_selector('img.Q4LuWd')
+        first_image.click()
+        time.sleep(2)  # Esperar un tiempo para cargar la imagen a tamaño completo
+    except Exception as e:
+        print(f"No se pudo encontrar la imagen para '{term}': {str(e)}")
+        continue
 
-        # Localiza el cuadro de búsqueda
-        search_box = driver.find_element("name", "q")
+    # Obtener la URL de la imagen a tamaño completo
+    try:
+        full_size_image_url = driver.find_element_by_css_selector('.n3VNCb img').get_attribute('src')
+        print(f"Imagen para '{term}': {full_size_image_url}")
+        # Puedes descargar la imagen usando urllib u otra biblioteca de descarga de imágenes aquí
+    except Exception as e:
+        print(f"No se pudo obtener la URL de la imagen para '{term}': {str(e)}")
 
-        # Ingresa la consulta de búsqueda
-        search_box.send_keys(query)
-
-        # Presiona Enter para realizar la búsqueda
-        search_box.send_keys(Keys.RETURN)
-
-        # Espera a que se carguen los resultados de la búsqueda
-        time.sleep(2)
-
-        # Itera a través de los resultados y realiza la descarga
-        image_links = driver.find_elements(By.CSS_SELECTOR,(".rg_i"))
-
-        for i in range(min(cantidad, len(image_links))):
-            # Haz clic en el enlace para abrir la imagen en una nueva pestaña
-            image_links[i].click()
-
-            # Espera a que se abra la nueva pestaña
-            time.sleep(2)
-
-            # Cambia a la nueva pestaña
-            driver.switch_to.window(driver.window_handles[1])
-
-            # Encuentra la imagen completa y guárdala (ajusta según la estructura de la página)
-            full_image = driver.find_elements(By.CSS_SELECTOR,(".n3VNCb img"))
-            src = full_image.get_attribute("src")
-            driver.get(src)
-            with open(f"{query}_{i+1}.jpg", "wb") as f:
-                f.write(driver.page_source.encode("utf-8"))
-
-            # Cierra la pestaña actual
-            driver.close()
-
-            # Vuelve a la pestaña de resultados de búsqueda
-            driver.switch_to.window(driver.window_handles[0])
-
-    finally:
-        # Cierra el navegador al finalizar
-        driver.quit()
-
-# Ejemplo de uso
-buscar_y_descargar_imagenes("gatos lindos", cantidad=10)
+# Cerrar el navegador al final
+driver.quit()
